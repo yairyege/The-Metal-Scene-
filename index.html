@@ -314,7 +314,7 @@
                 MASTER_DATA_STORE.festivals["Rock im Park"].forEach(b => mockLeaderboardPast[b.name] = { score: 0, genre: b.genre });
                 MASTER_DATA_STORE.festivals["Wacken Open Air"].forEach(b => mockLeaderboardUpcoming[b.name] = { score: 0, genre: b.genre });
 
-                renderGatewayMenus();
+                renderFestivalsApp();
                 filterToursByRegion('Europe');
             } catch (err) {
                 console.error("Fetch pipeline operation failed:", err);
@@ -334,7 +334,7 @@
             return null;
         }
 
-        function renderGatewayMenus() {
+        function renderFestivalsApp() {
             const feedTarget = document.getElementById('main-feed-injection-target');
             const matrixTarget = document.getElementById('matrix-grid-injection-target');
             feedTarget.innerHTML = ""; matrixTarget.innerHTML = "";
