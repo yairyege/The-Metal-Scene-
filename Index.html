@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Metal Scene - Mobile Core Engine</title>
+
+    <style>
+        :root {
+            --bg-dark: #09090b;
+            --bg-deep: #030304;
+            --bg-card: #121216;
+            --bg-input: #1a1a22;
+            --accent-red: #ef4444;
+            --accent-red-glow: rgba(239, 68, 68, 0.15);
+            --accent-blue: #3b82f6;
+            --accent-blue-glow: rgba(59, 130, 246, 0.15);
+            --accent-purple: #a855f7;
+            --accent-purple-glow: rgba(168, 85, 247, 0.15);
+            --text-light: #fafafa;
+            --text-gray: #a1a1aa;
+            --border-color: #1f1f23;
+            --panel-shadow: 0 10px 30px -10px rgba(0,0,0,0.7);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-light); display: flex; height: 100vh; overflow: hidden; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+
+        /* Navigation Sidebar */
+        nav { width: 280px; background-color: var(--bg-deep); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 30px 20px; flex-shrink: 0; }
+        .logo { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 40px; padding-left: 10px; }
+        .logo span { color: var(--accent-red); }
+        .nav-section-title { font-size: 11px; text-transform: uppercase; color: var(--text-gray); letter-spacing: 1.5px; margin: 25px 0 10px 10px; font-weight: 700; }
+        .nav-links { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+        .nav-item { padding: 14px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s ease; color: var(--text-gray); }
+        .nav-item:hover { background-color: #16161e; color: var(--text-light); }
+        .nav-item.active { background-color: var(--bg-card); color: var(--text-light); border: 1px solid var(--border-color); }
+        .nav-item.active-red { border-left: 4px solid var(--accent-red); background-color: var(--bg-card); color: white; }
+        .nav-item.active-blue { border-left: 4px solid var(--accent-blue); background-color: var(--bg-card); color: white; }
+        .nav-item.active-purple { border-left: 4px solid var(--accent-purple); background-color: var(--bg-card); color: white; }
+
+        /* Workspace Core Window Shell */
+        main { flex: 1; padding: 40px; overflow-y: auto; display: flex; gap: 40px; }
+        .workspace { flex: 2; min-width: 0; }
+        .section { display: none; }
+        .section.active { display: block; }
+        h1 { font-size: 32px; font-weight: 900; margin-bottom: 6px; text-transform: uppercase; letter-spacing: -0.5px; }
+        .subtitle { color: var(--text-gray); font-size: 14px; margin-bottom: 35px; }
+
+        /* Feed & Matrix Elements Layouts */
+        .feed-container { display: flex; flex-direction: column; gap: 30px; }
+        .festival-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .poster-card { position: relative; background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; display: flex; height: 240px; cursor: pointer; box-shadow: var(--panel-shadow); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s; }
+        .poster-img-layer { width: 40%; background-size: cover; background-position: center; position: relative; flex-shrink: 0; border-right: 1px solid var(--border-color); }
+        .poster-details { padding: 30px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .poster-card.rip:hover { border-color: var(--accent-red); transform: translateY(-4px); }
+        .poster-card.wacken:hover { border-color: var(--accent-blue); transform: translateY(-4px); }
+        .band-counter-badge { display: inline-block; padding: 4px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 10px; }
+
+        /* Top Lineup Controls Dock */
+        .search-filter-dock { background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: 14px; margin-bottom: 25px; display: flex; flex-direction: column; gap: 15px; box-shadow: var(--panel-shadow); }
+        .search-wrapper-row { display: flex; gap: 12px; }
+        .search-bar-input { flex: 1; background-color: var(--bg-deep); border: 1px solid #272732; padding: 14px 18px; border-radius: 10px; color: white; font-size: 14px; outline: none; }
+        .genre-pill-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+        .genre-pill { background-color: var(--bg-deep); border: 1px solid var(--border-color); color: var(--text-gray); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .genre-pill:hover, .genre-pill.active { background-color: var(--text-light); color: var(--bg-deep); border-color: var(--text-light); }
+
+        /* Tours Panels */
+        .region-filter-bar { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .filter-btn { background-color: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-gray); padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px; transition: all 0.2s; }
+        .filter-btn.active { background-color: var(--text-light); color: var(--bg-deep); border-color: var(--text-light); }
+        .tours-list-display { display: flex; flex-direction: column; gap: 15px; }
+        .tour-row { display: flex; align-items: center; justify-content: space-between; background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 20px 25px; border-radius: 14px; gap: 15px; }
+        .tour-row.highlighted-tour { border-color: var(--accent-purple); background: linear-gradient(90deg, rgba(168,85,247,0.05) 0%, transparent 100%); }
+        .tour-main-info h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+        .tour-main-info p { font-size: 13px; color: var(--text-gray); }
+        .tour-meta-badge { background-color: var(--bg-deep); border: 1px solid var(--border-color); padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--accent-purple); white-space: nowrap; }
+
+        /* Lineup Roster Configurations */
+        .lineup-scroll-container { max-height: 52vh; overflow-y: auto; padding-right: 12px; }
+        .lineup-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .band-block { display: flex; align-items: center; justify-content: space-between; background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 14px 20px; border-radius: 12px; gap: 15px; }
+        .band-info-wrapper { display: flex; align-items: center; gap: 16px; min-width: 0; }
+        .band-avatar-placeholder { width: 44px; height: 44px; border-radius: 8px; background: linear-gradient(135deg, #1e1e26 0%, #121216 100%); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: var(--text-gray); flex-shrink: 0; border: 1px solid rgba(255,255,255,0.05); }
+        .band-meta { display: flex; flex-direction: column; min-width: 0; }
+        .band-meta strong { font-size: 15px; font-weight: 700; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px; }
+        .band-meta span { font-size: 12px; color: var(--text-gray); margin-top: 3px; }
+        
+        /* 💡 High-End CSS Hover Tooltip Bubble Architecture Component */
+        .tour-alert-tag { 
+            position: relative; 
+            background: rgba(168,85,247,0.1); 
+            border: 1px solid rgba(168,85,247,0.3); 
+            color: #d8b4fe; 
+            font-size: 10px; 
+            font-weight: 800; 
+            padding: 3px 8px; 
+            border-radius: 5px; 
+            text-transform: uppercase; 
+            cursor: pointer; 
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .tour-alert-tag:hover { background: var(--accent-purple); color: white; }
+
+        .tour-tooltip-bubble {
+            display: none;
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #13131a;
+            border: 1px solid var(--accent-purple);
+            padding: 12px 14px;
+            border-radius: 10px;
+            width: 240px;
+            font-size: 12px;
+            color: var(--text-light);
+            text-align: left;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            z-index: 999;
+            line-height: 1.5;
+            text-transform: none; 
+            pointer-events: none; 
+        }
+        /* Reveal popup cleanly strictly on mouse focus trigger links */
+        .tour-alert-tag:hover .tour-tooltip-bubble { display: block; }
+
+        .controls-wrapper { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .star-clash-btn { background: none; border: none; font-size: 18px; cursor: pointer; opacity: 0.3; transition: transform 0.1s, opacity 0.2s; }
+        .star-clash-btn.starred { opacity: 1; filter: drop-shadow(0 0 4px #f59e0b); }
+        .star-clash-btn:hover { transform: scale(1.2); }
+        .action-circle-btn { background-color: var(--bg-input); color: white; border: 1px solid rgba(255,255,255,0.05); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+        /* Sticky Processing Panel Controller */
+        .voting-hub { width: 360px; background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px 25px; height: fit-content; position: sticky; top: 40px; box-shadow: var(--panel-shadow); flex-shrink: 0; }
+        .voting-hub h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+        .voting-hub .context-alert { font-size: 13px; color: var(--text-gray); margin-bottom: 20px; }
+        .scoring-rules-legend { background-color: var(--bg-deep); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: var(--text-gray); margin-bottom: 25px; line-height: 1.5; }
+        .submission-slot { background-color: var(--bg-deep); border: 1px dashed #272732; padding: 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13px; }
+        .slot-header { display: flex; justify-content: space-between; align-items: center; }
+        .submit-payload-btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; text-transform: uppercase; cursor: pointer; margin-top: 15px; color: #555; background-color: var(--bg-input); transition: all 0.2s; }
+        .submit-payload-btn.ready-past { background: var(--accent-red); color: white; box-shadow: 0 4px 12px var(--accent-red-glow); }
+        .submit-payload-btn.ready-upcoming { background: var(--accent-blue); color: white; box-shadow: 0 4px 12px var(--accent-blue-glow); }
+
+        .leaderboard-board { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; margin-top: 25px; }
+        .leaderboard-entry { display: flex; align-items: center; padding: 16px 12px; border-bottom: 1px solid var(--border-color); }
+        .rank-pos { width: 50px; font-weight: 900; color: var(--text-gray); font-size: 16px; }
+        .band-identity { flex: 1; font-weight: 700; display: flex; flex-direction: column; }
+        .band-identity span { font-size: 12px; color: var(--text-gray); font-weight: normal; margin-top: 3px; }
+        .vote-weight-total { font-weight: 800; color: var(--text-gray); font-size: 15px; }
+
+        /* 📱 Premium Fluid Responsive Media Query Framework Matrices */
+        @media (max-width: 1024px) {
+            body { display: block; height: auto; overflow: auto; }
+            
+            /* Sidebar turns into fluid horizontal block top banner */
+            nav { width: 100%; height: auto; padding: 20px; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .logo { margin-bottom: 20px; text-align: center; }
+            .nav-section-title { display: none; }
+            .nav-links { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; }
+            .nav-item { padding: 10px 16px; font-size: 13px; text-align: center; }
+            .nav-item.active-red, .nav-item.active-blue, .nav-item.active-purple { border-left: none; border-bottom: 3px solid currentColor; border-radius: 6px 6px 0 0; }
+
+            /* Primary workspace viewport changes to simple block architecture layout flows */
+            main { display: block; padding: 25px 15px; }
+            .workspace { margin-bottom: 40px; }
+            .lineup-scroll-container { max-height: none; overflow-y: visible; }
+            
+            /* Voting dock drops down below the active tracking viewport contexts safely */
+            .voting-hub { width: 100%; position: relative; top: 0; margin-top: 40px; box-shadow: none; }
+        }
+
+        @media (max-width: 680px) {
+            .lineup-list, .festival-grid { grid-template-columns: 1fr; }
+            .poster-card { flex-direction: column; height: auto; }
+            .poster-img-layer { width: 100%; height: 130px; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .poster-details { padding: 20px; gap: 20px; }
+            h1 { font-size: 26px; }
+            .tour-row { flex-direction: column; align-items: flex-start; }
+            .tour-meta-badge { align-self: flex-start; }
+            .tour-tooltip-bubble { left: 0; transform: none; width: 100%; max-width: 280px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">The Metal <span>Scene</span></div>
+        <div class="nav-section-title">Navigation</div>
+        <ul class="nav-links">
+            <li class="nav-item active" id="menu-dashboard" onclick="switchInterfaceTab('dashboard')">Home / Feed</li>
+            <li class="nav-item" id="menu-festivals" onclick="switchInterfaceTab('festivals')">Discover Festivals</li>
+            <li class="nav-item" id="menu-tours" onclick="switchInterfaceTab('tours-view-portal')">Discover Tours ⚡</li>
+            <li class="nav-item" id="menu-clashfinder" onclick="switchInterfaceTab('clashfinder-view-portal')">My Clashfinder ⭐</li>
+        </ul>
+        <div class="nav-section-title">Live Scoreboards</div>
+        <ul class="nav-links">
+            <li class="nav-item" id="menu-past-leaderboard" onclick="switchInterfaceTab('past-leaderboard-view')">RIP '26 Best Sets 🔴</li>
+            <li class="nav-item" id="menu-upcoming-leaderboard" onclick="switchInterfaceTab('upcoming-leaderboard-view')">Wacken '26 Hype 🔵</li>
+        </ul>
+    </nav>
+
+    <main>
+        <div class="workspace">
+            
+            <div id="dashboard" class="section active">
+                <h1>Featured Feed</h1>
+                <div class="subtitle">Select an evaluation portal to manage metrics and track lineups.</div>
+                <div class="feed-container" id="main-feed-injection-target"></div>
+            </div>
+
+            <div id="festivals" class="section">
+                <h1>Gateways Matrix</h1>
+                <div class="subtitle">Select an available festival node to view complete rosters.</div>
+                <div class="festival-grid" id="matrix-grid-injection-target"></div>
+            </div>
+
+            <div id="tours-view-portal" class="section">
+                <h1>Global Tour Registry</h1>
+                <div class="subtitle">Cross-referenced scheduling rows. Bands currently on the road populate automatically below.</div>
+                
+                <div class="region-filter-bar">
+                    <button class="filter-btn active" id="btn-reg-Europe" onclick="filterToursByRegion('Europe')">Europe</button>
+                    <button class="filter-btn" id="btn-reg-USA" onclick="filterToursByRegion('USA')">USA</button>
+                    <button class="filter-btn" id="btn-reg-Australia" onclick="filterToursByRegion('Australia')">Australia</button>
+                </div>
+
+                <div class="tours-list-display" id="tours-rendering-target"></div>
+            </div>
+
+            <div id="clashfinder-view-portal" class="section">
+                <h1>Personal Clashfinder Matrix</h1>
+                <div class="subtitle">Your starred profile selections grouped uniformly into a live tracking directory.</div>
+                <div class="lineup-list" id="clashfinder-injection-target"></div>
+            </div>
+
+            <div id="festival-portal-view" class="section">
+                <button class="action-circle-btn" onclick="switchInterfaceTab('dashboard')" style="width: auto; height: auto; padding: 10px 20px; border-radius: 8px; font-size: 13px; margin-bottom: 25px; font-weight: 700;">← Return to Feed</button>
+                <h1 id="portal-main-heading">Lineup Stream</h1>
+                <div class="subtitle" id="portal-sub-heading">Connecting async endpoints...</div>
+                
+                <div class="search-filter-dock">
+                    <div class="search-wrapper-row">
+                        <input type="text" id="live-lineup-search-field" class="search-bar-input" placeholder="Search roster bands instantly..." oninput="evaluateLineupFilters()">
+                    </div>
+                    <div class="genre-pill-scroll" id="genre-pill-target-box"></div>
+                </div>
+
+                <div class="lineup-scroll-container">
+                    <div class="lineup-list" id="portal-dynamic-target-list"></div>
+                </div>
+            </div>
+
+            <div id="past-leaderboard-view" class="section">
+                <h1>Rock im Park 2026 Scoreboard</h1>
+                <div class="subtitle">Metric performance outputs.</div>
+                <div class="leaderboard-board" id="past-leaderboard-output"></div>
+            </div>
+            <div id="upcoming-leaderboard-view" class="section">
+                <h1>Wacken 2026 Anticipation Scoreboard</h1>
+                <div class="subtitle">Anticipation weighting scores.</div>
+                <div class="leaderboard-board" id="upcoming-leaderboard-output"></div>
+            </div>
+
+        </div>
+
+        <div class="voting-hub">
+            <h2 id="hub-context-title">No Gateway Bound</h2>
+            <div class="context-alert" id="hub-context-subtitle">Select a target lineup from the feed to begin.</div>
+            
+            <div class="scoring-rules-legend">
+                📊 <strong>Scoring Matrix Weighting Rule:</strong><br>
+                Slot 1 = 5 pts | Slot 2 = 4 pts | Slot 3 = 3 pts
+            </div>
+
+            <div id="compilation-slots-group">
+                <div class="submission-slot" id="slot-idx-1"><div class="slot-header"><span style="color:var(--text-gray);">1. Unassigned Parameter</span></div></div>
+                <div class="submission-slot" id="slot-idx-2"><div class="slot-header"><span style="color:var(--text-gray);">2. Unassigned Parameter</span></div></div>
+                <div class="submission-slot" id="slot-idx-3"><div class="slot-header"><span style="color:var(--text-gray);">3. Unassigned Parameter</span></div></div>
+                <div class="submission-slot" id="slot-idx-4"><div class="slot-header"><span style="color:var(--text-gray);">4. Unassigned Parameter</span></div></div>
+                <div class="submission-slot" id="slot-idx-5"><div class="slot-header"><span style="color:var(--text-gray);">5. Unassigned Parameter</span></div></div>
+            </div>
+
+            <button class="submit-payload-btn" id="transmit-payload-trigger" onclick="transmitVotePayload()" disabled>Transmitter Offline</button>
+        </div>
+    </main>
+
+    <script>
+        const FESTIVAL_ASSET_METADATA = {
+            "Rock im Park": { image: "assets/rock-im-park.png", styleClass: "rip", tagline: "Past Show Scoreboard Engine.", color: "var(--accent-red)" },
+            "Wacken Open Air": { image: "assets/wacken.png", styleClass: "wacken", tagline: "Upcoming Anticipation Matrix.", color: "var(--accent-blue)" }
+        };
+
+        let MASTER_DATA_STORE = null;
+        let mockLeaderboardPast = {};
+        let mockLeaderboardUpcoming = {};
+        let personalClashfinderSet = new Set();
+        let activePortalContext = null;
+        let currentSelectionsArray = [];
+        let activeGenreFilter = "ALL";
+
+        async function loadApplicationData() {
+            try {
+                const response = await fetch('app_datasource.json');
+                if (!response.ok) throw new Error("Network query response was not valid.");
+                MASTER_DATA_STORE = await response.json();
+                
+                MASTER_DATA_STORE.festivals["Rock im Park"].forEach(b => mockLeaderboardPast[b.name] = { score: 0, genre: b.genre });
+                MASTER_DATA_STORE.festivals["Wacken Open Air"].forEach(b => mockLeaderboardUpcoming[b.name] = { score: 0, genre: b.genre });
+
+                renderGatewayMenus();
+                filterToursByRegion('Europe');
+            } catch (err) {
+                console.error("Fetch pipeline operation failed:", err);
+                alert("DATABASE FAULT:\nCould not load 'app_datasource.json'. Make sure you are running Live Server folder mode!");
+            }
+        }
+
+        // 🔍 Cross-Referencing Helper: Scans database for matching tour object profiles
+        function locateTourDataPackage(bandName) {
+            if (!MASTER_DATA_STORE || !MASTER_DATA_STORE.tours) return null;
+            for (const region in MASTER_DATA_STORE.tours) {
+                const matchedInstance = MASTER_DATA_STORE.tours[region].find(t => t.band.toLowerCase() === bandName.toLowerCase());
+                if (matchedInstance) {
+                    return { ...matchedInstance, spatialRegion: region };
+                }
+            }
+            return null;
+        }
+
+        function renderGatewayMenus() {
+            const feedTarget = document.getElementById('main-feed-injection-target');
+            const matrixTarget = document.getElementById('matrix-grid-injection-target');
+            feedTarget.innerHTML = ""; matrixTarget.innerHTML = "";
+
+            Object.keys(MASTER_DATA_STORE.festivals).forEach(festName => {
+                const meta = FESTIVAL_ASSET_METADATA[festName];
+                const bandCount = MASTER_DATA_STORE.festivals[festName].length;
+
+                const wideCard = document.createElement('div');
+                wideCard.className = `poster-card ${meta.styleClass}`;
+                wideCard.onclick = () => initializeFestivalPortal(festName);
+                wideCard.innerHTML = `
+                    <div class="poster-img-layer" style="background-image: url('${meta.image}');"></div>
+                    <div class="poster-details">
+                        <div><h2>${festName}</h2><p>${meta.tagline}</p><span class="band-counter-badge">${bandCount} Bands Loaded</span></div>
+                        <span class="action-tag">Open Portal →</span>
+                    </div>
+                `;
+                feedTarget.appendChild(wideCard);
+
+                const gridCard = document.createElement('div');
+                gridCard.className = `poster-card ${meta.styleClass}`;
+                gridCard.style.flexDirection = "column"; gridCard.style.height = "auto";
+                gridCard.onclick = () => initializeFestivalPortal(festName);
+                gridCard.innerHTML = `
+                    <div class="poster-img-layer" style="width:100%; height:140px; background-image:url('${meta.image}');"></div>
+                    <div class="poster-details"><div><h3>${festName}</h3><span class="band-counter-badge">${bandCount} Acts</span></div></div>
+                `;
+                matrixTarget.appendChild(gridCard);
+            });
+        }
+
+        function initializeFestivalPortal(festivalName) {
+            activePortalContext = festivalName;
+            currentSelectionsArray = [];
+            activeGenreFilter = "ALL";
+            document.getElementById('live-lineup-search-field').value = "";
+            resetVotingWorkspaceUI();
+
+            document.getElementById('portal-main-heading').innerText = festivalName;
+            document.getElementById('portal-sub-heading').innerText = "Streaming records live from relational JSON source matrix.";
+            document.getElementById('hub-context-title').innerText = festivalName;
+            document.getElementById('hub-context-subtitle').innerText = "Configure slots below.";
+
+            buildGenreFilterPills(festivalName);
+            evaluateLineupFilters();
+            switchInterfaceTab('festival-portal-view');
+        }
+
+        function buildGenreFilterPills(festivalName) {
+            const targetContainer = document.getElementById('genre-pill-target-box');
+            targetContainer.innerHTML = "";
+
+            const uniqueGenres = new Set(["ALL"]);
+            MASTER_DATA_STORE.festivals[festivalName].forEach(b => uniqueGenres.add(b.genre));
+
+            uniqueGenres.forEach(genre => {
+                const pill = document.createElement('span');
+                pill.className = `genre-pill ${genre === 'ALL' ? 'active' : ''}`;
+                pill.innerText = genre;
+                pill.onclick = () => {
+                    document.querySelectorAll('.genre-pill').forEach(p => p.classList.remove('active'));
+                    pill.classList.add('active');
+                    activeGenreFilter = genre;
+                    evaluateLineupFilters();
+                };
+                targetContainer.appendChild(pill);
+            });
+        }
+
+        function evaluateLineupFilters() {
+            const currentSearchString = document.getElementById('live-lineup-search-field').value.toLowerCase().trim();
+            const targetContainer = document.getElementById('portal-dynamic-target-list');
+            targetContainer.innerHTML = "";
+
+            const targetDataset = MASTER_DATA_STORE.festivals[activePortalContext];
+
+            targetDataset.forEach(band => {
+                const searchMatches = band.name.toLowerCase().includes(currentSearchString);
+                const genreMatches = (activeGenreFilter === "ALL" || band.genre === activeGenreFilter);
+
+                if (searchMatches && genreMatches) {
+                    const block = document.createElement('div');
+                    block.className = 'band-block';
+                    
+                    const initial = band.name.charAt(0).toUpperCase();
+                    const isStarred = personalClashfinderSet.has(band.name);
+                    
+                    // Pull tour parameters using our relational link lookups
+                    const tourInfo = locateTourDataPackage(band.name);
+                    const tourAlertBadge = tourInfo ? `
+                        <span class="tour-alert-tag" onclick="autoRouteToTourContext('${band.name.replace(/'/g, "\\'")}')">
+                            ✈️ Tour Matches
+                            <span class="tour-tooltip-bubble">
+                                <strong>🚀 ${tourInfo.spatialRegion} Tour Matrix</strong><br>
+                                📅 Window: ${tourInfo.dates}<br>
+                                📍 Scope: ${tourInfo.venues}
+                            </span>
+                        </span>
+                    ` : "";
+
+                    block.innerHTML = `
+                        <div class="band-info-wrapper">
+                            <div class="band-avatar-placeholder">${initial}</div>
+                            <div class="band-meta">
+                                <strong>${band.name} ${tourAlertBadge}</strong>
+                                <span>${band.genre}</span>
+                            </div>
+                        </div>
+                        <div class="controls-wrapper">
+                            <button class="star-clash-btn ${isStarred ? 'starred' : ''}" onclick="toggleClashfinderState(this, '${band.name.replace(/'/g, "\\'")}')">⭐</button>
+                            <button class="action-circle-btn" onclick="stageBandToSelection('${band.name.replace(/'/g, "\\'")}')">+</button>
+                        </div>
+                    `;
+                    targetContainer.appendChild(block);
+                }
+            });
+        }
+
+        function toggleClashfinderState(elementNode, bandName) {
+            if (personalClashfinderSet.has(bandName)) {
+                personalClashfinderSet.delete(bandName);
+                if(elementNode) elementNode.classList.remove('starred');
+            } else {
+                personalClashfinderSet.add(bandName);
+                if(elementNode) elementNode.classList.add('starred');
+            }
+            renderClashfinderMatrixUI();
+        }
+
+        // ✈️ Upgraded Clashfinder Renders linking Tooltip architecture logic loops
+        function renderClashfinderMatrixUI() {
+            const target = document.getElementById('clashfinder-injection-target');
+            target.innerHTML = "";
+
+            if (personalClashfinderSet.size === 0) {
+                target.innerHTML = `<p style="color:var(--text-gray); font-size:14px; padding-left:10px;">Your calendar agenda file index returns zero records.</p>`;
+                return;
+            }
+
+            personalClashfinderSet.forEach(bandName => {
+                const initial = bandName.charAt(0).toUpperCase();
+                const block = document.createElement('div');
+                block.className = 'band-block';
+                
+                const tourInfo = locateTourDataPackage(bandName);
+                const tourAlertBadge = tourInfo ? `
+                    <span class="tour-alert-tag" onclick="autoRouteToTourContext('${bandName.replace(/'/g, "\\'")}')">
+                        ✈️ Tour Matches
+                        <span class="tour-tooltip-bubble">
+                            <strong>🚀 ${tourInfo.spatialRegion} Tour Matrix</strong><br>
+                            📅 Window: ${tourInfo.dates}<br>
+                            📍 Scope: ${tourInfo.venues}
+                        </span>
+                    </span>
+                ` : "";
+
+                block.innerHTML = `
+                    <div class="band-info-wrapper">
+                        <div class="band-avatar-placeholder">${initial}</div>
+                        <div class="band-meta">
+                            <strong>${bandName} ${tourAlertBadge}</strong>
+                            <span>Clashfinder Monitored Slot</span>
+                        </div>
+                    </div>
+                    <button class="action-circle-btn" onclick="removeDirectlyFromClashfinder('${bandName.replace(/'/g, "\\'")}')" style="color:var(--accent-red); font-size:18px;">×</button>
+                `;
+                target.appendChild(block);
+            });
+        }
+
+        function removeDirectlyFromClashfinder(bandName) {
+            personalClashfinderSet.delete(bandName);
+            renderClashfinderMatrixUI();
+            if(activePortalContext) evaluateLineupFilters();
+        }
+
+        function autoRouteToTourContext(bandName) {
+            const tourInfo = locateTourDataPackage(bandName);
+            if(!tourInfo) return;
+
+            filterToursByRegion(tourInfo.spatialRegion);
+            switchInterfaceTab('tours-view-portal');
+
+            setTimeout(() => {
+                document.querySelectorAll('.tour-row').forEach(row => {
+                    if(row.innerHTML.includes(tourInfo.band)) {
+                        row.classList.add('highlighted-tour');
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }, 150);
+        }
+
+        function filterToursByRegion(regionKey) {
+            document.querySelectorAll('.region-filter-bar .filter-btn').forEach(btn => btn.classList.remove('active'));
+            const targetBtn = document.getElementById(`btn-reg-${regionKey}`);
+            if(targetBtn) targetBtn.classList.add('active');
+
+            const renderContainer = document.getElementById('tours-rendering-target');
+            renderContainer.innerHTML = "";
+
+            if (!MASTER_DATA_STORE || !MASTER_DATA_STORE.tours[regionKey]) return;
+
+            MASTER_DATA_STORE.tours[regionKey].forEach(tour => {
+                const card = document.createElement('div');
+                card.className = 'tour-row';
+                card.innerHTML = `
+                    <div class="tour-main-info">
+                        <h3>${tour.band}</h3>
+                        <p>📅 Window: ${tour.dates} &nbsp;|&nbsp; 📍 Scope: ${tour.venues}</p>
+                    </div>
+                    <span class="tour-meta-badge">${tour.status}</span>
+                `;
+                renderContainer.appendChild(card);
+            });
+        }
+
+        function switchInterfaceTab(targetTabId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.className = 'nav-item');
+
+            const selected = document.getElementById(targetTabId);
+            if(selected) selected.classList.add('active');
+
+            if(targetTabId === 'dashboard') document.getElementById('menu-dashboard').classList.add('active');
+            else if (targetTabId === 'festivals' || targetTabId === 'festival-portal-view') document.getElementById('menu-festivals').classList.add('active');
+            else if (targetTabId === 'tours-view-portal') document.getElementById('menu-tours').classList.add('active');
+            else if (targetTabId === 'clashfinder-view-portal') {
+                document.getElementById('menu-clashfinder').classList.add('active-purple');
+                renderClashfinderMatrixUI();
+            }
+            else if (targetTabId === 'past-leaderboard-view') { document.getElementById('menu-past-leaderboard').classList.add('active-red'); renderLeaderboardVisuals('past'); }
+            else if (targetTabId === 'upcoming-leaderboard-view') { document.getElementById('menu-upcoming-leaderboard').classList.add('active-blue'); renderLeaderboardVisuals('upcoming'); }
+        }
+
+        function stageBandToSelection(bandName) {
+            if (currentSelectionsArray.some(b => b.name === bandName)) return;
+            if (currentSelectionsArray.length >= 5) return;
+            currentSelectionsArray.push({ name: bandName });
+            synchronizeSelectionMatrixUI();
+        }
+
+        function unstageBandFromSelection(index) {
+            currentSelectionsArray.splice(index, 1);
+            synchronizeSelectionMatrixUI();
+        }
+
+        function synchronizeSelectionMatrixUI() {
+            const submitBtn = document.getElementById('transmit-payload-trigger');
+            const meta = FESTIVAL_ASSET_METADATA[activePortalContext];
+
+            for (let i = 1; i <= 5; i++) {
+                const currentSlotNode = document.getElementById(`slot-idx-${i}`);
+                const dataInstance = currentSelectionsArray[i - 1];
+
+                if (dataInstance) {
+                    currentSlotNode.innerHTML = `
+                        <div class="slot-header">
+                            <strong>Slot ${i}: ${dataInstance.name}</strong>
+                            <button style="background:none; border:none; color:var(--accent-red); font-weight:bold; cursor:pointer;" onclick="unstageBandFromSelection(${i - 1})">×</button>
+                        </div>
+                    `;
+                    currentSlotNode.style.borderColor = meta ? meta.color : "#272732";
+                } else {
+                    currentSlotNode.innerHTML = `<div class="slot-header"><span style="color:var(--text-gray);">${i}. Empty Target Slot</span></div>`;
+                    currentSlotNode.style.borderColor = "#272732";
+                }
+            }
+
+            if (currentSelectionsArray.length > 0) {
+                submitBtn.disabled = false;
+                submitBtn.className = (activePortalContext === 'Rock im Park') ? "submit-payload-btn ready-past" : "submit-payload-btn ready-upcoming";
+                submitBtn.innerText = "Commit Weighting Metrics";
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.className = "submit-payload-btn";
+                submitBtn.innerText = "Transmitter Offline";
+            }
+        }
+
+        function resetVotingWorkspaceUI() { currentSelectionsArray = []; synchronizeSelectionMatrixUI(); }
+
+        function transmitVotePayload() {
+            if (currentSelectionsArray.length === 0) return;
+            const targetLedger = (activePortalContext === 'Rock im Park') ? mockLeaderboardPast : mockLeaderboardUpcoming;
+
+            currentSelectionsArray.forEach((item, index) => {
+                targetLedger[item.name].score += (5 - index);
+            });
+
+            const redirectionTargetTab = (activePortalContext === 'Rock im Park') ? 'past-leaderboard-view' : 'upcoming-leaderboard-view';
+            resetVotingWorkspaceUI();
+            switchInterfaceTab(redirectionTargetTab);
+        }
+
+        function renderLeaderboardVisuals(typeKey) {
+            const ledger = (typeKey === 'past') ? mockLeaderboardPast : mockLeaderboardUpcoming;
+            const node = (typeKey === 'past') ? document.getElementById('past-leaderboard-output') : document.getElementById('upcoming-leaderboard-output');
+
+            node.innerHTML = "";
+            const sorted = Object.keys(ledger).map(key => {
+                return { name: key, score: ledger[key].score, genre: ledger[key].genre };
+            }).sort((a, b) => b.score - a.score);
+
+            sorted.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'leaderboard-entry';
+                row.innerHTML = `
+                    <div class="rank-pos">#${index + 1}</div>
+                    <div class="band-identity"><strong>${item.name}</strong><span>${item.genre}</span></div>
+                    <div class="vote-weight-total" style="color:${item.score > 0 ? (typeKey === 'past' ? 'var(--accent-red)' : 'var(--accent-blue)') : 'var(--text-gray)'}">${item.score} pts</div>
+                `;
+                node.appendChild(row);
+            });
+        }
+
+        window.onload = loadApplicationData;
+    </script>
+</body>
+</html>
